@@ -50,3 +50,13 @@ release
 *.su
 *.idb
 *.pdb
+
+.cproject
+.mxproject
+.project
+Drivers/
+STM32L476RGTX_FLASH.ld
+STM32L476RGTX_RAM.ld
+walk_data_collector.ioc
+walk_data_collector Debug.launch
+
