@@ -56,10 +56,51 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+// select reading channel pins
+#define selectAr 53
+#define selectBr 51
+#define selectCr 49
+
+// select writing channel pins
+#define selectAw 12
+#define selectBw 11
+#define selectCw 10
+
+//analog reading pin
+#define readingPin A15
+
+//writing pin
+#define writingPin 9
+
+// matrix size
+#define rowNum 3
+#define colNum 3
+
+// inhibit pins
+#define winh1 6
+#define winh2 7
+#define winh3 8
+
+#define rinh1 43
+#define rinh2 45
+#define rinh3 47
+
 #define LINE_MAX_LENGTH	5
 
 static char line_buffer[LINE_MAX_LENGTH + 1];
 static uint32_t line_length;
+int touch_list[rowNum][colNum];
+
+//Function sending values from array over UART to PC
+void sendValues(const int a[][colNum]) {
+	for (int i = 0; i <rowNum; i++)
+	{
+		for (int j = 0; j < colNum; j++)
+		{
+			printf("%d \n", touch_list[i][j]);
+		}
+	}
+}
 
 //Function adding characters to buffer
 void line_append(uint8_t value)
@@ -69,8 +110,9 @@ void line_append(uint8_t value)
 			line_buffer[line_length] = '\0';
 			if (strcmp(line_buffer, "ok") == 0)
 			{
-				printf("got it\n");
-				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+				sendValues(touch_list);
+//				printf("got it\n");
+//				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 			} else
 			{
 				printf("wrong\n");
@@ -134,11 +176,17 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  for (int i = 0; i < rowNum; i++)
+  {
+    for (int j = 0; j < colNum; j++)
+    {
+      touch_list[i][j] = 255;
+    }
+  }
   while (1)
   {
 	  uint8_t value;
-	  if (HAL_UART_Receive(&huart2, &value, 1, 0) == HAL_OK)
-		  line_append(value);
+	  if (HAL_UART_Receive(&huart2, &value, 1, 0) == HAL_OK) line_append(value);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
