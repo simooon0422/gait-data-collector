@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -56,34 +57,9 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-// select reading channel pins
-#define selectAr 53
-#define selectBr 51
-#define selectCr 49
-
-// select writing channel pins
-#define selectAw 12
-#define selectBw 11
-#define selectCw 10
-
-//analog reading pin
-#define readingPin A15
-
-//writing pin
-#define writingPin 9
-
 // matrix size
-#define rowNum 3
-#define colNum 3
-
-// inhibit pins
-#define winh1 6
-#define winh2 7
-#define winh3 8
-
-#define rinh1 43
-#define rinh2 45
-#define rinh3 47
+#define rowNum 24
+#define colNum 24
 
 #define LINE_MAX_LENGTH	5
 
@@ -102,6 +78,191 @@ void sendValues(const int a[][colNum]) {
 	}
 }
 
+
+//Function to use printf() with UART
+int __io_putchar(int ch)
+{
+  if (ch == '\n') {
+    __io_putchar('\r');
+  }
+
+  HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
+
+  return 1;
+}
+
+int readAnalogValue()
+{
+	  HAL_ADC_Start(&hadc1);
+	  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+
+	  return HAL_ADC_GetValue(&hadc1);
+}
+
+
+void select_write_channel(int channel) {
+	switch (channel) {
+		case 0:
+			HAL_GPIO_WritePin(selectAw_GPIO_Port, selectAw_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectBw_GPIO_Port, selectBw_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectCw_GPIO_Port, selectCw_Pin, GPIO_PIN_RESET);
+			break;
+		case 1:
+			HAL_GPIO_WritePin(selectAw_GPIO_Port, selectAw_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectBw_GPIO_Port, selectBw_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectCw_GPIO_Port, selectCw_Pin, GPIO_PIN_RESET);
+			break;
+		case 2:
+			HAL_GPIO_WritePin(selectAw_GPIO_Port, selectAw_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectBw_GPIO_Port, selectBw_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectCw_GPIO_Port, selectCw_Pin, GPIO_PIN_RESET);
+			break;
+		case 3:
+			HAL_GPIO_WritePin(selectAw_GPIO_Port, selectAw_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectBw_GPIO_Port, selectBw_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectCw_GPIO_Port, selectCw_Pin, GPIO_PIN_RESET);
+			break;
+		case 4:
+			HAL_GPIO_WritePin(selectAw_GPIO_Port, selectAw_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectBw_GPIO_Port, selectBw_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectCw_GPIO_Port, selectCw_Pin, GPIO_PIN_SET);
+			break;
+		case 5:
+			HAL_GPIO_WritePin(selectAw_GPIO_Port, selectAw_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectBw_GPIO_Port, selectBw_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectCw_GPIO_Port, selectCw_Pin, GPIO_PIN_SET);
+			break;
+		case 6:
+			HAL_GPIO_WritePin(selectAw_GPIO_Port, selectAw_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectBw_GPIO_Port, selectBw_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectCw_GPIO_Port, selectCw_Pin, GPIO_PIN_SET);
+			break;
+	    case 7:
+	    	HAL_GPIO_WritePin(selectAw_GPIO_Port, selectAw_Pin, GPIO_PIN_SET);
+	    	HAL_GPIO_WritePin(selectBw_GPIO_Port, selectBw_Pin, GPIO_PIN_SET);
+	    	HAL_GPIO_WritePin(selectCw_GPIO_Port, selectCw_Pin, GPIO_PIN_SET);
+	        break;
+	    default:
+	    	break;
+	}
+}
+
+void select_read_channel(int channel) {
+	switch (channel) {
+		case 0:
+			HAL_GPIO_WritePin(selectAr_GPIO_Port, selectAr_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectBr_GPIO_Port, selectBr_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectCr_GPIO_Port, selectCr_Pin, GPIO_PIN_RESET);
+			break;
+		case 1:
+			HAL_GPIO_WritePin(selectAr_GPIO_Port, selectAr_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectBr_GPIO_Port, selectBr_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectCr_GPIO_Port, selectCr_Pin, GPIO_PIN_RESET);
+			break;
+		case  2:
+			HAL_GPIO_WritePin(selectAr_GPIO_Port, selectAr_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectBr_GPIO_Port, selectBr_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectCr_GPIO_Port, selectCr_Pin, GPIO_PIN_RESET);
+			break;
+		case  3:
+			HAL_GPIO_WritePin(selectAr_GPIO_Port, selectAr_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectBr_GPIO_Port, selectBr_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectCr_GPIO_Port, selectCr_Pin, GPIO_PIN_RESET);
+			break;
+		case  4:
+			HAL_GPIO_WritePin(selectAr_GPIO_Port, selectAr_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectBr_GPIO_Port, selectBr_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectCr_GPIO_Port, selectCr_Pin, GPIO_PIN_SET);
+			break;
+		case 5:
+			HAL_GPIO_WritePin(selectAr_GPIO_Port, selectAr_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectBr_GPIO_Port, selectBr_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectCr_GPIO_Port, selectCr_Pin, GPIO_PIN_SET);
+			break;
+		case 6:
+			HAL_GPIO_WritePin(selectAr_GPIO_Port, selectAr_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(selectBr_GPIO_Port, selectBr_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(selectCr_GPIO_Port, selectCr_Pin, GPIO_PIN_SET);
+			break;
+	    case 7:
+	    	HAL_GPIO_WritePin(selectAr_GPIO_Port, selectAr_Pin, GPIO_PIN_SET);
+	    	HAL_GPIO_WritePin(selectBr_GPIO_Port, selectBr_Pin, GPIO_PIN_SET);
+	    	HAL_GPIO_WritePin(selectCr_GPIO_Port, selectCr_Pin, GPIO_PIN_SET);
+	        break;
+	    default:
+	    	break;
+	}
+}
+
+void readValues()
+{
+  for (int i = 0; i < rowNum; i++)
+  {
+    if (i == 0)
+    {
+    	HAL_GPIO_WritePin(winh1_GPIO_Port, winh1_Pin, GPIO_PIN_RESET);
+    	HAL_GPIO_WritePin(winh2_GPIO_Port, winh2_Pin, GPIO_PIN_SET);
+    	HAL_GPIO_WritePin(winh3_GPIO_Port, winh3_Pin, GPIO_PIN_SET);
+    }
+    else if (i == 8)
+     {
+    	HAL_GPIO_WritePin(winh1_GPIO_Port, winh1_Pin, GPIO_PIN_SET);
+    	HAL_GPIO_WritePin(winh2_GPIO_Port, winh2_Pin, GPIO_PIN_RESET);
+    	HAL_GPIO_WritePin(winh3_GPIO_Port, winh3_Pin, GPIO_PIN_SET);
+     }
+    else if (i == 16)
+     {
+    	HAL_GPIO_WritePin(winh1_GPIO_Port, winh1_Pin, GPIO_PIN_SET);
+    	HAL_GPIO_WritePin(winh2_GPIO_Port, winh2_Pin, GPIO_PIN_SET);
+    	HAL_GPIO_WritePin(winh3_GPIO_Port, winh3_Pin, GPIO_PIN_RESET);
+     }
+
+    if (i >= 16)
+    {
+      select_write_channel(i-16);
+    }
+    else if (i >= 8)
+    {
+      select_write_channel(i-8);
+    }
+    else  select_write_channel(i);
+
+		for (int j = 0; j < colNum; j++)
+		{
+		  if (j == 0)
+		  {
+			  HAL_GPIO_WritePin(rinh1_GPIO_Port, rinh1_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(rinh2_GPIO_Port, rinh2_Pin, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(rinh3_GPIO_Port, rinh3_Pin, GPIO_PIN_SET);
+		  }
+		  else if (j == 8)
+		   {
+			  HAL_GPIO_WritePin(rinh1_GPIO_Port, rinh1_Pin, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(rinh2_GPIO_Port, rinh2_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(rinh3_GPIO_Port, rinh3_Pin, GPIO_PIN_SET);
+		   }
+		  else if (j == 16)
+		   {
+			  HAL_GPIO_WritePin(rinh1_GPIO_Port, rinh1_Pin, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(rinh2_GPIO_Port, rinh2_Pin, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(rinh3_GPIO_Port, rinh3_Pin, GPIO_PIN_RESET);
+		   }
+
+		  if (j >= 16)
+		  {
+			select_read_channel(j-16);
+		  }
+		  else if (j >= 8)
+		  {
+			select_read_channel(j-8);
+		  }
+		  else select_read_channel(j);
+
+		  touch_list[i][j] = readAnalogValue() / 8;
+		}
+  }
+}
+
 //Function adding characters to buffer
 void line_append(uint8_t value)
 {
@@ -110,6 +271,7 @@ void line_append(uint8_t value)
 			line_buffer[line_length] = '\0';
 			if (strcmp(line_buffer, "ok") == 0)
 			{
+				readValues();
 				sendValues(touch_list);
 //				printf("got it\n");
 //				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
@@ -126,18 +288,6 @@ void line_append(uint8_t value)
 		}
 		line_buffer[line_length++] = value;
 	}
-}
-
-//Function to use printf() with UART
-int __io_putchar(int ch)
-{
-  if (ch == '\n') {
-    __io_putchar('\r');
-  }
-
-  HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
-
-  return 1;
 }
 /* USER CODE END 0 */
 
@@ -170,12 +320,15 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+
   for (int i = 0; i < rowNum; i++)
   {
     for (int j = 0; j < colNum; j++)
@@ -183,6 +336,9 @@ int main(void)
       touch_list[i][j] = 255;
     }
   }
+
+  HAL_GPIO_WritePin(writingPin_GPIO_Port, writingPin_Pin, GPIO_PIN_SET);
+
   while (1)
   {
 	  uint8_t value;
@@ -217,7 +373,13 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
   RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
+  RCC_OscInitStruct.PLL.PLLM = 1;
+  RCC_OscInitStruct.PLL.PLLN = 40;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
+  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
+  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -227,12 +389,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_MSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
   {
     Error_Handler();
   }
