@@ -61,6 +61,8 @@ void SystemClock_Config(void);
 #define rowNum 24
 #define colNum 24
 
+#define muxNumber 3
+
 #define LINE_MAX_LENGTH	5
 
 static char line_buffer[LINE_MAX_LENGTH + 1];
@@ -82,6 +84,22 @@ port_and_pin_t inhibits[] = {
 		{rinh2_GPIO_Port, rinh2_Pin},
 		{rinh3_GPIO_Port, rinh3_Pin}
 };
+
+void chooseMux(uint8_t mux)
+{
+	for (int i = 0; i < muxNumber; i++)
+	{
+		if (i == mux)
+		{
+			HAL_GPIO_WritePin(inhibits[i].GPIOx, inhibits[i].GPIO_Pin, GPIO_PIN_RESET);
+		}
+		else
+		{
+			HAL_GPIO_WritePin(inhibits[i].GPIOx, inhibits[i].GPIO_Pin, GPIO_PIN_SET);
+		}
+
+	}
+}
 
 //Function sending values from array over UART to PC
 void sendValues(const int a[][colNum]) {
@@ -182,41 +200,23 @@ void select_read_channel(int channel) {
 
 void readValues()
 {
+	uint8_t currentMux = 0;
+
 	shiftHighBit();
+
 	for (int i = 0; i < rowNum; i++)
 	{
+		currentMux = 0;
 		for (int j = 0; j < colNum; j++)
 		{
-		  if (j == 0)
-		  {
-			  HAL_GPIO_WritePin(rinh1_GPIO_Port, rinh1_Pin, GPIO_PIN_RESET);
-			  HAL_GPIO_WritePin(rinh2_GPIO_Port, rinh2_Pin, GPIO_PIN_SET);
-			  HAL_GPIO_WritePin(rinh3_GPIO_Port, rinh3_Pin, GPIO_PIN_SET);
-		  }
-		  else if (j == 8)
-		   {
-			  HAL_GPIO_WritePin(rinh1_GPIO_Port, rinh1_Pin, GPIO_PIN_SET);
-			  HAL_GPIO_WritePin(rinh2_GPIO_Port, rinh2_Pin, GPIO_PIN_RESET);
-			  HAL_GPIO_WritePin(rinh3_GPIO_Port, rinh3_Pin, GPIO_PIN_SET);
-		   }
-		  else if (j == 16)
-		   {
-			  HAL_GPIO_WritePin(rinh1_GPIO_Port, rinh1_Pin, GPIO_PIN_SET);
-			  HAL_GPIO_WritePin(rinh2_GPIO_Port, rinh2_Pin, GPIO_PIN_SET);
-			  HAL_GPIO_WritePin(rinh3_GPIO_Port, rinh3_Pin, GPIO_PIN_RESET);
-		   }
+			if (j % 8 == 0)
+			{
+				chooseMux(currentMux);
+				currentMux++;
+			}
 
-		  if (j >= 16)
-		  {
-			select_read_channel(j-16);
-		  }
-		  else if (j >= 8)
-		  {
-			select_read_channel(j-8);
-		  }
-		  else select_read_channel(j);
-
-		  touch_list[i][j] = readAnalogValue() / 8;
+			select_read_channel(j % 8);
+			touch_list[i][j] = readAnalogValue() / 8;
 		}
 
 		shiftLowBit();
