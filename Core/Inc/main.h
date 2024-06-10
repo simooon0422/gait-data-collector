@@ -57,28 +57,36 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define selectBr_Pin GPIO_PIN_13
-#define selectBr_GPIO_Port GPIOC
-#define rinh2_Pin GPIO_PIN_2
-#define rinh2_GPIO_Port GPIOC
-#define rinh1_Pin GPIO_PIN_3
-#define rinh1_GPIO_Port GPIOC
-#define selectCr_Pin GPIO_PIN_0
-#define selectCr_GPIO_Port GPIOA
-#define rinh3_Pin GPIO_PIN_4
-#define rinh3_GPIO_Port GPIOA
-#define LD2_Pin GPIO_PIN_5
-#define LD2_GPIO_Port GPIOA
-#define SRCLR_RESET_Pin GPIO_PIN_6
+#define SELECT_B_Pin GPIO_PIN_2
+#define SELECT_B_GPIO_Port GPIOC
+#define SELECT_C_Pin GPIO_PIN_3
+#define SELECT_C_GPIO_Port GPIOC
+#define SRCLR_RESET_Pin GPIO_PIN_5
 #define SRCLR_RESET_GPIO_Port GPIOA
-#define RCLK_LATCH_Pin GPIO_PIN_7
+#define RCLK_LATCH_Pin GPIO_PIN_6
 #define RCLK_LATCH_GPIO_Port GPIOA
-#define SER_DATA_Pin GPIO_PIN_7
-#define SER_DATA_GPIO_Port GPIOC
-#define SRCLK_CLOCK_Pin GPIO_PIN_6
-#define SRCLK_CLOCK_GPIO_Port GPIOB
-#define selectAr_Pin GPIO_PIN_7
-#define selectAr_GPIO_Port GPIOB
+#define SRCLK_CLOCK_Pin GPIO_PIN_7
+#define SRCLK_CLOCK_GPIO_Port GPIOA
+#define SELECT_A_Pin GPIO_PIN_0
+#define SELECT_A_GPIO_Port GPIOB
+#define INH5_Pin GPIO_PIN_10
+#define INH5_GPIO_Port GPIOB
+#define INH8_Pin GPIO_PIN_7
+#define INH8_GPIO_Port GPIOC
+#define INH6_Pin GPIO_PIN_8
+#define INH6_GPIO_Port GPIOA
+#define INH7_Pin GPIO_PIN_9
+#define INH7_GPIO_Port GPIOA
+#define INH1_Pin GPIO_PIN_10
+#define INH1_GPIO_Port GPIOA
+#define INH2_Pin GPIO_PIN_3
+#define INH2_GPIO_Port GPIOB
+#define INH4_Pin GPIO_PIN_4
+#define INH4_GPIO_Port GPIOB
+#define INH3_Pin GPIO_PIN_5
+#define INH3_GPIO_Port GPIOB
+#define SER_DATA_Pin GPIO_PIN_6
+#define SER_DATA_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

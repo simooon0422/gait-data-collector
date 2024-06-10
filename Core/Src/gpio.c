@@ -50,33 +50,36 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, selectBr_Pin|rinh2_Pin|rinh1_Pin|SER_DATA_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, SELECT_B_Pin|SELECT_C_Pin|INH8_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, selectCr_Pin|rinh3_Pin|LD2_Pin|SRCLR_RESET_Pin
-                          |RCLK_LATCH_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, SRCLR_RESET_Pin|RCLK_LATCH_Pin|SRCLK_CLOCK_Pin|INH6_Pin
+                          |INH7_Pin|INH1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, SRCLK_CLOCK_Pin|selectAr_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, SELECT_A_Pin|INH5_Pin|INH2_Pin|INH4_Pin
+                          |INH3_Pin|SER_DATA_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PCPin PCPin PCPin PCPin */
-  GPIO_InitStruct.Pin = selectBr_Pin|rinh2_Pin|rinh1_Pin|SER_DATA_Pin;
+  /*Configure GPIO pins : PCPin PCPin PCPin */
+  GPIO_InitStruct.Pin = SELECT_B_Pin|SELECT_C_Pin|INH8_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PAPin PAPin PAPin PAPin
-                           PAPin */
-  GPIO_InitStruct.Pin = selectCr_Pin|rinh3_Pin|LD2_Pin|SRCLR_RESET_Pin
-                          |RCLK_LATCH_Pin;
+                           PAPin PAPin */
+  GPIO_InitStruct.Pin = SRCLR_RESET_Pin|RCLK_LATCH_Pin|SRCLK_CLOCK_Pin|INH6_Pin
+                          |INH7_Pin|INH1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PBPin PBPin */
-  GPIO_InitStruct.Pin = SRCLK_CLOCK_Pin|selectAr_Pin;
+  /*Configure GPIO pins : PBPin PBPin PBPin PBPin
+                           PBPin PBPin */
+  GPIO_InitStruct.Pin = SELECT_A_Pin|INH5_Pin|INH2_Pin|INH4_Pin
+                          |INH3_Pin|SER_DATA_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
