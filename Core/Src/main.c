@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -59,7 +60,7 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 // matrix size
 #define rowNum 168
-#define colNum 60
+#define colNum 56
 
 #define muxNumber 8
 
@@ -107,12 +108,12 @@ void chooseMux(uint8_t mux)
 }
 
 //Function sending values from array over UART to PC
-void sendValues(const int a[][colNum]) {
+void sendValues(const uint16_t a[][colNum]) {
 	for (int i = 0; i <rowNum; i++)
 	{
 		for (int j = 0; j < colNum; j++)
 		{
-			printf("%d \n", touch_list[i][j]);
+			printf("%d\n", touch_list[i][j]);
 		}
 	}
 }
@@ -145,6 +146,8 @@ void shiftLowBit()
 	HAL_GPIO_WritePin(SRCLK_CLOCK_GPIO_Port, SRCLK_CLOCK_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(RCLK_LATCH_GPIO_Port, RCLK_LATCH_Pin, GPIO_PIN_SET);
 }
+
+
 
 void shiftHighBit()
 {
@@ -220,12 +223,13 @@ void readValues()
 			}
 
 			select_read_channel(j % 8);
-			touch_list[i][j] = readAnalogValue() / 6;//8;
+			touch_list[i][j] = readAnalogValue() / 12;//8;
 		}
 
 		shiftLowBit();
 	}
 }
+
 
 //Function adding characters to buffer
 void line_append(uint8_t value)
@@ -285,6 +289,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -306,6 +311,13 @@ int main(void)
 
   while (1)
   {
+//	  HAL_TIM_Base_Start(&htim6);
+//	  readValues();
+//	  sendValues(touch_list);
+//	  HAL_TIM_Base_Stop(&htim6);
+//	  printf("%lu \n", __HAL_TIM_GET_COUNTER(&htim6));
+//	  __HAL_TIM_SET_COUNTER(&htim6, 0);
+
 	  uint8_t value;
 	  if (HAL_UART_Receive(&huart2, &value, 1, 0) == HAL_OK) line_append(value);
     /* USER CODE END WHILE */
