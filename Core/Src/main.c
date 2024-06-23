@@ -76,9 +76,6 @@ typedef struct
    uint16_t GPIO_Pin;
 } port_and_pin_t;
 
-//port_and_pin_t r1 = {rinh1_GPIO_Port, rinh1_Pin};
-//port_and_pin_t r2 = {rinh2_GPIO_Port, rinh2_Pin};
-//port_and_pin_t r3 = {rinh3_GPIO_Port, rinh3_Pin};
 
 port_and_pin_t inhibits[] = {
 		{INH1_GPIO_Port, INH1_Pin},
