@@ -52,6 +52,7 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void PeriphCommonClock_Config(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -69,6 +70,8 @@ void SystemClock_Config(void);
 static char line_buffer[LINE_MAX_LENGTH + 1];
 static uint32_t line_length;
 uint16_t touch_list[rowNum][colNum];
+uint8_t led_brightness;
+uint8_t buzzer_volume;
 
 typedef struct
 {
@@ -87,6 +90,10 @@ port_and_pin_t inhibits[] = {
 		{INH7_GPIO_Port, INH7_Pin},
 		{INH8_GPIO_Port, INH8_Pin},
 };
+
+uint16_t map(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) {
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 
 void chooseMux(uint8_t mux)
 {
@@ -110,9 +117,12 @@ void sendValues(const uint16_t a[][colNum]) {
 	{
 		for (int j = 0; j < colNum; j++)
 		{
-			printf("%d\n", touch_list[i][j]);
+			printf("%d", touch_list[i][j]);
 		}
 	}
+	printf("%d", led_brightness);
+	printf("%d", buzzer_volume);
+	printf("\n");
 }
 
 
@@ -128,11 +138,20 @@ int __io_putchar(int ch)
   return 1;
 }
 
-uint16_t readAnalogValue()
+uint16_t readPressureValue()
 {
 	  HAL_ADC_Start(&hadc1);
 	  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 	  return HAL_ADC_GetValue(&hadc1);
+}
+
+void readPotentiometersValues()
+{
+	  HAL_ADC_Start(&hadc2);
+	  HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
+	  led_brightness = map(HAL_ADC_GetValue(&hadc2), 0, 63, 0, 5);
+	  HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
+	  buzzer_volume = map(HAL_ADC_GetValue(&hadc2), 0, 63, 0, 5);
 }
 
 void shiftLowBit()
@@ -220,7 +239,9 @@ void readValues()
 			}
 
 			select_read_channel(j % 8);
-			touch_list[i][j] = readAnalogValue() / 12;//8;
+			uint16_t a_val = readPressureValue();
+			if(a_val > 40) a_val = 40;
+			touch_list[i][j] = map(a_val, 0, 40, 0, 9);
 		}
 
 		shiftLowBit();
@@ -237,9 +258,8 @@ void line_append(uint8_t value)
 			if (strcmp(line_buffer, "ok") == 0)
 			{
 				readValues();
+				readPotentiometersValues();
 				sendValues(touch_list);
-//				printf("got it\n");
-//				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 			} else
 			{
 				printf("wrong\n");
@@ -278,6 +298,9 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
+/* Configure the peripherals common clocks */
+  PeriphCommonClock_Config();
+
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
@@ -287,6 +310,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_TIM6_Init();
+  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -294,6 +318,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+  HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
 
   for (int i = 0; i < rowNum; i++)
   {
@@ -369,6 +394,31 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief Peripherals Common Clock Configuration
+  * @retval None
+  */
+void PeriphCommonClock_Config(void)
+{
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+
+  /** Initializes the peripherals clock
+  */
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+  PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
+  PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
+  PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
+  PeriphClkInit.PLLSAI1.PLLSAI1N = 16;
+  PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
+  PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
+  PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
+  PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_ADC1CLK;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
