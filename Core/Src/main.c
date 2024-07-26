@@ -112,8 +112,8 @@ void chooseMux(uint8_t mux)
 }
 
 //Function sending values from array over UART to PC
-void sendValues(const uint16_t a[][colNum]) {
-	for (int i = 0; i <rowNum; i++)
+void sendValues() {
+	for (int i = 0; i < rowNum; i++)
 	{
 		for (int j = 0; j < colNum; j++)
 		{
@@ -125,6 +125,7 @@ void sendValues(const uint16_t a[][colNum]) {
 	printf("\n");
 }
 
+//const uint16_t a[][colNum]
 
 //Function to use printf() with UART
 int __io_putchar(int ch)
@@ -259,7 +260,7 @@ void line_append(uint8_t value)
 			{
 				readValues();
 				readPotentiometersValues();
-				sendValues(touch_list);
+				sendValues();
 			} else
 			{
 				printf("wrong\n");
@@ -273,6 +274,24 @@ void line_append(uint8_t value)
 		}
 		line_buffer[line_length++] = value;
 	}
+}
+
+#define RX_BUFFER_SIZE 1
+
+uint8_t rxBuffer[RX_BUFFER_SIZE];
+volatile uint8_t data_ready = 0;
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart->Instance == USART2) {
+        // Wywołaj funkcję do przesyłania danych z tablicy
+    	if (data_ready == 1){
+    		sendValues();
+    		data_ready = 0;
+    	}
+
+        // Restart odbierania
+        HAL_UART_Receive_IT(&huart2, rxBuffer, RX_BUFFER_SIZE);
+    }
 }
 /* USER CODE END 0 */
 
@@ -331,17 +350,24 @@ int main(void)
   HAL_GPIO_WritePin(SRCLR_RESET_GPIO_Port, SRCLR_RESET_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(SRCLR_RESET_GPIO_Port, SRCLR_RESET_Pin, GPIO_PIN_SET);
 
+  uint8_t initBuffer;
+  HAL_UART_Receive_IT(&huart2, &initBuffer, 1);
+
   while (1)
   {
 //	  HAL_TIM_Base_Start(&htim6);
-//	  readValues();
-//	  sendValues(touch_list);
+	  readValues();
+	  readPotentiometersValues();
+	  data_ready = 1;
+//	  sendValues();
 //	  HAL_TIM_Base_Stop(&htim6);
 //	  printf("%lu \n", __HAL_TIM_GET_COUNTER(&htim6));
 //	  __HAL_TIM_SET_COUNTER(&htim6, 0);
+//	  HAL_Delay(1000);
 
-	  uint8_t value;
-	  if (HAL_UART_Receive(&huart2, &value, 1, 0) == HAL_OK) line_append(value);
+
+//	  uint8_t value;
+//	  if (HAL_UART_Receive(&huart2, &value, 1, 0) == HAL_OK) line_append(value);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
