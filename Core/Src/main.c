@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -62,6 +63,7 @@ void PeriphCommonClock_Config(void);
 // matrix size
 #define rowNum 168
 #define colNum 56
+#define matrixSize rowNum*colNum
 
 #define muxNumber 8
 
@@ -70,8 +72,16 @@ void PeriphCommonClock_Config(void);
 static char line_buffer[LINE_MAX_LENGTH + 1];
 static uint32_t line_length;
 uint16_t touch_list[rowNum][colNum];
+uint8_t touchList[matrixSize+3];
 uint8_t led_brightness;
 uint8_t buzzer_volume;
+
+
+#define SPI_CMD_SEND_DATA 0x01
+#define ARRAY_SIZE 56*168+3
+uint8_t dataArray[ARRAY_SIZE];
+uint8_t dummyArray[ARRAY_SIZE];
+uint8_t spi_rx_buffer[1];
 
 typedef struct
 {
@@ -125,7 +135,14 @@ void sendValues() {
 	printf("\n");
 }
 
-//const uint16_t a[][colNum]
+void sendValuesUART() {
+	for (int i = 0; i < matrixSize+2; i++)
+	{
+		printf("%d", touchList[i]);
+	}
+	printf("\n");
+}
+
 
 //Function to use printf() with UART
 int __io_putchar(int ch)
@@ -249,8 +266,51 @@ void readValues()
 	}
 }
 
+uint8_t calculate_checksum(uint8_t *data, size_t length)
+{
+	uint8_t checksum = 0;
+	for (size_t i = 0; i < length-1; i++)
+	{
+		checksum += data[i];
+	}
+//	return checksum;
+	return 100;
+}
 
-//Function adding characters to buffer
+void readValuesSPI()
+{
+	uint8_t currentMux = 0;
+
+	shiftHighBit();
+
+	for (int i = 0; i < rowNum; i++)
+	{
+		currentMux = 0;
+		for (int j = 0; j < colNum; j++)
+		{
+			if (j % 8 == 0)
+			{
+				chooseMux(currentMux);
+				currentMux++;
+			}
+
+			select_read_channel(j % 8);
+			uint16_t adc_val = readPressureValue();
+			if(adc_val > 40) adc_val = 40;
+			uint16_t index = i * colNum + j;
+			touchList[index] = map(adc_val, 0, 40, 0, 9);
+		}
+
+		shiftLowBit();
+	}
+	readPotentiometersValues();
+	touchList[matrixSize] = led_brightness;
+	touchList[matrixSize+1] = buzzer_volume;
+	touchList[matrixSize+2] = calculate_checksum(touchList, sizeof(touchList));
+}
+
+
+//Function for adding characters to buffer
 void line_append(uint8_t value)
 {
 	if (value == '\r' || value == '\n') {
@@ -285,7 +345,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == USART2) {
         // Wywołaj funkcję do przesyłania danych z tablicy
     	if (data_ready == 1){
-    		sendValues();
+    		sendValuesUART();
     		data_ready = 0;
     	}
 
@@ -293,6 +353,24 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         HAL_UART_Receive_IT(&huart2, rxBuffer, RX_BUFFER_SIZE);
     }
 }
+
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+	if (hspi->Instance == SPI2)
+	{
+		  if (data_ready == 1) //spi_rx_buffer[0] == SPI_CMD_SEND_DATA &&
+		  {
+			  HAL_SPI_Transmit(&hspi2, touchList, ARRAY_SIZE, HAL_MAX_DELAY);
+			  data_ready = 0;
+		  }
+		  else
+		  {
+			  HAL_SPI_Transmit(&hspi2, dummyArray, ARRAY_SIZE, HAL_MAX_DELAY);
+		  }
+		  HAL_SPI_Receive_IT(&hspi2, spi_rx_buffer, sizeof(spi_rx_buffer));
+	}
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -330,6 +408,7 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM6_Init();
   MX_ADC2_Init();
+  MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -347,19 +426,39 @@ int main(void)
     }
   }
 
+  for (int i = 0; i < matrixSize+3; i++)
+  {
+     touchList[i] = 0;
+  }
+
+
   HAL_GPIO_WritePin(SRCLR_RESET_GPIO_Port, SRCLR_RESET_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(SRCLR_RESET_GPIO_Port, SRCLR_RESET_Pin, GPIO_PIN_SET);
 
   uint8_t initBuffer;
   HAL_UART_Receive_IT(&huart2, &initBuffer, 1);
+  HAL_SPI_Receive_IT(&hspi2, spi_rx_buffer, sizeof(spi_rx_buffer));
+
+  for (int i = 0; i < ARRAY_SIZE; i++)
+  {
+	  //	  dataArray[i] = i % 10 + 1;
+	  dataArray[i] = 0;
+  }
+
+//  dataArray[ARRAY_SIZE] = calculate_checksum(dataArray, ARRAY_SIZE-1);
+  for (int i = 0; i < ARRAY_SIZE; i++)
+  {
+	  dummyArray[i] = 1;
+  }
 
   while (1)
   {
-//	  HAL_TIM_Base_Start(&htim6);
-	  readValues();
-	  readPotentiometersValues();
+	  readValuesSPI();
 	  data_ready = 1;
-//	  sendValues();
+//	  readPotentiometersValues();
+//	  printf("LED: %d\n", led_brightness);
+//	  printf("Buzzer: %d\n", buzzer_volume);
+//	  HAL_TIM_Base_Start(&htim6);
 //	  HAL_TIM_Base_Stop(&htim6);
 //	  printf("%lu \n", __HAL_TIM_GET_COUNTER(&htim6));
 //	  __HAL_TIM_SET_COUNTER(&htim6, 0);
