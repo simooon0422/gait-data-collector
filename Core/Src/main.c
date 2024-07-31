@@ -61,27 +61,23 @@ void PeriphCommonClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 // matrix size
-#define rowNum 168
-#define colNum 56
-#define matrixSize rowNum*colNum
+#define ROW_NUM 168
+#define COL_NUM 56
+#define MUX_NUM 8
+#define TOUCH_ARRAY_SIZE ROW_NUM*COL_NUM
+#define SEND_ARRAY_SIZE TOUCH_ARRAY_SIZE + 3
+#define SPI_CMD_SEND_DATA 0x01
+#define RX_BUFFER_SIZE 1
 
-#define muxNumber 8
 
-#define LINE_MAX_LENGTH	5
+volatile uint8_t dataReady = 0;
 
-static char line_buffer[LINE_MAX_LENGTH + 1];
-static uint32_t line_length;
-uint16_t touch_list[rowNum][colNum];
-uint8_t touchList[matrixSize+3];
+uint8_t touchList[SEND_ARRAY_SIZE];
 uint8_t led_brightness;
 uint8_t buzzer_volume;
-
-
-#define SPI_CMD_SEND_DATA 0x01
-#define ARRAY_SIZE 56*168+3
-uint8_t dataArray[ARRAY_SIZE];
-uint8_t dummyArray[ARRAY_SIZE];
-uint8_t spi_rx_buffer[1];
+uint8_t dummyArray[SEND_ARRAY_SIZE];
+uint8_t spiRxBuffer[RX_BUFFER_SIZE];
+uint8_t uartRxBuffer[RX_BUFFER_SIZE];
 
 typedef struct
 {
@@ -101,13 +97,27 @@ port_and_pin_t inhibits[] = {
 		{INH8_GPIO_Port, INH8_Pin},
 };
 
+//Function to use printf() with UART
+int __io_putchar(int ch)
+{
+  if (ch == '\n') {
+    __io_putchar('\r');
+  }
+
+  HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
+
+  return 1;
+}
+
+// Function for mapping values
 uint16_t map(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+//Function for choosing current multiplexer
 void chooseMux(uint8_t mux)
 {
-	for (int i = 0; i < muxNumber; i++)
+	for (int i = 0; i < MUX_NUM; i++)
 	{
 		if (i == mux)
 		{
@@ -121,41 +131,16 @@ void chooseMux(uint8_t mux)
 	}
 }
 
-//Function sending values from array over UART to PC
-void sendValues() {
-	for (int i = 0; i < rowNum; i++)
-	{
-		for (int j = 0; j < colNum; j++)
-		{
-			printf("%d", touch_list[i][j]);
-		}
-	}
-	printf("%d", led_brightness);
-	printf("%d", buzzer_volume);
-	printf("\n");
-}
-
+// Function for sending values over UART
 void sendValuesUART() {
-	for (int i = 0; i < matrixSize+2; i++)
+	for (int i = 0; i < SEND_ARRAY_SIZE-1; i++)
 	{
 		printf("%d", touchList[i]);
 	}
 	printf("\n");
 }
 
-
-//Function to use printf() with UART
-int __io_putchar(int ch)
-{
-  if (ch == '\n') {
-    __io_putchar('\r');
-  }
-
-  HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
-
-  return 1;
-}
-
+// Function for reading analog value of pressure on the mat
 uint16_t readPressureValue()
 {
 	  HAL_ADC_Start(&hadc1);
@@ -163,6 +148,7 @@ uint16_t readPressureValue()
 	  return HAL_ADC_GetValue(&hadc1);
 }
 
+// Function for reading analog values from potentiometers - LED brightness and Buzzer volume
 void readPotentiometersValues()
 {
 	  HAL_ADC_Start(&hadc2);
@@ -172,6 +158,7 @@ void readPotentiometersValues()
 	  buzzer_volume = map(HAL_ADC_GetValue(&hadc2), 0, 63, 0, 5);
 }
 
+//Function for writing LOW bit on shift registers
 void shiftLowBit()
 {
 	HAL_GPIO_WritePin(RCLK_LATCH_GPIO_Port, RCLK_LATCH_Pin, GPIO_PIN_RESET);
@@ -182,7 +169,7 @@ void shiftLowBit()
 }
 
 
-
+//Function for writing HIGH bit on shift registers
 void shiftHighBit()
 {
 	HAL_GPIO_WritePin(RCLK_LATCH_GPIO_Port, RCLK_LATCH_Pin, GPIO_PIN_RESET);
@@ -192,7 +179,8 @@ void shiftHighBit()
 	HAL_GPIO_WritePin(RCLK_LATCH_GPIO_Port, RCLK_LATCH_Pin, GPIO_PIN_SET);
 }
 
-void select_read_channel(int channel) {
+// Function for choosing current channel on multiplexer
+void selectReadChannel(int channel) {
 	switch (channel) {
 		case 0:
 			HAL_GPIO_WritePin(SELECT_A_GPIO_Port, SELECT_A_Pin, GPIO_PIN_RESET);
@@ -239,16 +227,17 @@ void select_read_channel(int channel) {
 	}
 }
 
+// Function for reading values from the mat and writing them into array
 void readValues()
 {
 	uint8_t currentMux = 0;
 
 	shiftHighBit();
 
-	for (int i = 0; i < rowNum; i++)
+	for (int i = 0; i < ROW_NUM; i++)
 	{
 		currentMux = 0;
-		for (int j = 0; j < colNum; j++)
+		for (int j = 0; j < COL_NUM; j++)
 		{
 			if (j % 8 == 0)
 			{
@@ -256,118 +245,47 @@ void readValues()
 				currentMux++;
 			}
 
-			select_read_channel(j % 8);
-			uint16_t a_val = readPressureValue();
-			if(a_val > 40) a_val = 40;
-			touch_list[i][j] = map(a_val, 0, 40, 0, 9);
-		}
-
-		shiftLowBit();
-	}
-}
-
-uint8_t calculate_checksum(uint8_t *data, size_t length)
-{
-	uint8_t checksum = 0;
-	for (size_t i = 0; i < length-1; i++)
-	{
-		checksum += data[i];
-	}
-//	return checksum;
-	return 100;
-}
-
-void readValuesSPI()
-{
-	uint8_t currentMux = 0;
-
-	shiftHighBit();
-
-	for (int i = 0; i < rowNum; i++)
-	{
-		currentMux = 0;
-		for (int j = 0; j < colNum; j++)
-		{
-			if (j % 8 == 0)
-			{
-				chooseMux(currentMux);
-				currentMux++;
-			}
-
-			select_read_channel(j % 8);
+			selectReadChannel(j % 8);
 			uint16_t adc_val = readPressureValue();
 			if(adc_val > 40) adc_val = 40;
-			uint16_t index = i * colNum + j;
+			uint16_t index = i * COL_NUM + j;
 			touchList[index] = map(adc_val, 0, 40, 0, 9);
 		}
 
 		shiftLowBit();
 	}
 	readPotentiometersValues();
-	touchList[matrixSize] = led_brightness;
-	touchList[matrixSize+1] = buzzer_volume;
-	touchList[matrixSize+2] = calculate_checksum(touchList, sizeof(touchList));
+	touchList[TOUCH_ARRAY_SIZE] = led_brightness;
+	touchList[TOUCH_ARRAY_SIZE+1] = buzzer_volume;
+	touchList[TOUCH_ARRAY_SIZE+2] = 100; // Add number 100 to mark correct transmission
 }
 
-
-//Function for adding characters to buffer
-void line_append(uint8_t value)
-{
-	if (value == '\r' || value == '\n') {
-		if (line_length > 0) {
-			line_buffer[line_length] = '\0';
-			if (strcmp(line_buffer, "ok") == 0)
-			{
-				readValues();
-				readPotentiometersValues();
-				sendValues();
-			} else
-			{
-				printf("wrong\n");
-			}
-			line_length = 0;
-		}
-	}
-	else {
-		if (line_length >= LINE_MAX_LENGTH) {
-			line_length = 0;
-		}
-		line_buffer[line_length++] = value;
-	}
-}
-
-#define RX_BUFFER_SIZE 1
-
-uint8_t rxBuffer[RX_BUFFER_SIZE];
-volatile uint8_t data_ready = 0;
-
+// Function for handling UART interrupt
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == USART2) {
-        // Wywołaj funkcję do przesyłania danych z tablicy
-    	if (data_ready == 1){
+    	if (dataReady == 1){
     		sendValuesUART();
-    		data_ready = 0;
+    		dataReady = 0;
     	}
-
-        // Restart odbierania
-        HAL_UART_Receive_IT(&huart2, rxBuffer, RX_BUFFER_SIZE);
+        HAL_UART_Receive_IT(&huart2, uartRxBuffer, RX_BUFFER_SIZE);
     }
 }
 
+// Function for handling SPI interrupt
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	if (hspi->Instance == SPI2)
 	{
-		  if (data_ready == 1) //spi_rx_buffer[0] == SPI_CMD_SEND_DATA &&
+		  if (dataReady == 1)
 		  {
-			  HAL_SPI_Transmit(&hspi2, touchList, ARRAY_SIZE, HAL_MAX_DELAY);
-			  data_ready = 0;
+			  HAL_SPI_Transmit(&hspi2, touchList, SEND_ARRAY_SIZE, HAL_MAX_DELAY);
+			  dataReady = 0;
 		  }
 		  else
 		  {
-			  HAL_SPI_Transmit(&hspi2, dummyArray, ARRAY_SIZE, HAL_MAX_DELAY);
+			  HAL_SPI_Transmit(&hspi2, dummyArray, SEND_ARRAY_SIZE, HAL_MAX_DELAY);
 		  }
-		  HAL_SPI_Receive_IT(&hspi2, spi_rx_buffer, sizeof(spi_rx_buffer));
+		  HAL_SPI_Receive_IT(&hspi2, spiRxBuffer, sizeof(spiRxBuffer));
 	}
 }
 
@@ -415,58 +333,34 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  // Calibrate ADC
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
 
-  for (int i = 0; i < rowNum; i++)
-  {
-    for (int j = 0; j < colNum; j++)
-    {
-      touch_list[i][j] = 0;
-    }
-  }
-
-  for (int i = 0; i < matrixSize+3; i++)
+  // Prepare touchList and dummyArray
+  for (int i = 0; i < SEND_ARRAY_SIZE; i++)
   {
      touchList[i] = 0;
   }
 
-
-  HAL_GPIO_WritePin(SRCLR_RESET_GPIO_Port, SRCLR_RESET_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(SRCLR_RESET_GPIO_Port, SRCLR_RESET_Pin, GPIO_PIN_SET);
-
-  uint8_t initBuffer;
-  HAL_UART_Receive_IT(&huart2, &initBuffer, 1);
-  HAL_SPI_Receive_IT(&hspi2, spi_rx_buffer, sizeof(spi_rx_buffer));
-
-  for (int i = 0; i < ARRAY_SIZE; i++)
-  {
-	  //	  dataArray[i] = i % 10 + 1;
-	  dataArray[i] = 0;
-  }
-
-//  dataArray[ARRAY_SIZE] = calculate_checksum(dataArray, ARRAY_SIZE-1);
-  for (int i = 0; i < ARRAY_SIZE; i++)
+  for (int i = 0; i < SEND_ARRAY_SIZE; i++)
   {
 	  dummyArray[i] = 1;
   }
 
+  // Reset shift registers
+  HAL_GPIO_WritePin(SRCLR_RESET_GPIO_Port, SRCLR_RESET_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(SRCLR_RESET_GPIO_Port, SRCLR_RESET_Pin, GPIO_PIN_SET);
+
+  // Initialize UART and SPI in interrupts
+  uint8_t initBuffer;
+  HAL_UART_Receive_IT(&huart2, &initBuffer, 1);
+  HAL_SPI_Receive_IT(&hspi2, spiRxBuffer, sizeof(spiRxBuffer));
+
   while (1)
   {
-	  readValuesSPI();
-	  data_ready = 1;
-//	  readPotentiometersValues();
-//	  printf("LED: %d\n", led_brightness);
-//	  printf("Buzzer: %d\n", buzzer_volume);
-//	  HAL_TIM_Base_Start(&htim6);
-//	  HAL_TIM_Base_Stop(&htim6);
-//	  printf("%lu \n", __HAL_TIM_GET_COUNTER(&htim6));
-//	  __HAL_TIM_SET_COUNTER(&htim6, 0);
-//	  HAL_Delay(1000);
-
-
-//	  uint8_t value;
-//	  if (HAL_UART_Receive(&huart2, &value, 1, 0) == HAL_OK) line_append(value);
+	  readValues();
+	  dataReady = 1;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
