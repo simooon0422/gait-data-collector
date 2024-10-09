@@ -247,9 +247,9 @@ void readValues()
 
 			selectReadChannel(j % 8);
 			uint16_t adc_val = readPressureValue();
-			if(adc_val > 40) adc_val = 40;
+			if(adc_val > 30) adc_val = 30;
 			uint16_t index = i * COL_NUM + j;
-			touchList[index] = map(adc_val, 0, 40, 0, 9);
+			touchList[index] = map(adc_val, 0, 30, 0, 9);
 		}
 
 		shiftLowBit();
